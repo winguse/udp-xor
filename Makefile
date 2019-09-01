@@ -17,6 +17,7 @@ PLATFORM_LIST = \
 	linux-mips-softfloat \
 	linux-mips-hardfloat \
 	linux-mipsle \
+	linux-mipsle-softfloat \
 	linux-mips64 \
 	linux-mips64le \
 	freebsd-386 \
@@ -57,6 +58,9 @@ linux-mips-hardfloat:
 
 linux-mipsle:
 	GOARCH=mipsle GOOS=linux $(GOBUILD) -o $(BINDIR)/$(NAME)-$@
+
+linux-mipsle-softfloat:
+	GOARCH=mipsle GOMIPS=softfloat GOOS=linux $(GOBUILD) -o $(BINDIR)/$(NAME)-$@
 
 linux-mips64:
 	GOARCH=mips64 GOOS=linux $(GOBUILD) -o $(BINDIR)/$(NAME)-$@
