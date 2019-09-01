@@ -14,3 +14,6 @@ bin/*
 
 # dep
 vendor
+
+# macOS
+.DS_*

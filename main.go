@@ -13,11 +13,9 @@ import (
 var from = flag.String("from", "127.0.0.1:2000", "from addr")
 var to = flag.String("to", "127.0.0.1:3000", "to addr")
 var xorFlag = flag.Int("xor", 0, "the xor value for simple encode, only using first 8 bit.")
-
-const (
-	BUFF_SIZE = 1500
-	TIMEOUT   = time.Second * 30
-)
+var sessionTimeoutByRemoteOnly = flag.Bool("session-timeout-by-remote-only", false, "session timeout by remote reply only")
+var timeout = flag.Int("timeout", 30, "session timeout in seconds")
+var bufferSize = flag.Int("buffer-size", 1600, "buffer size in bytes, the max UDP package size.")
 
 type Session struct {
 	clientAddr *net.UDPAddr
@@ -41,9 +39,9 @@ func xor(data []byte, n int) []byte {
 
 func handleSession(f *Forwarder, key string, session *Session) {
 	log.Printf("%s started", key)
-	data := make([]byte, BUFF_SIZE)
+	data := make([]byte, *bufferSize)
 	for {
-		session.serverConn.SetReadDeadline(time.Now().Add(TIMEOUT))
+		session.serverConn.SetReadDeadline(time.Now().Add(time.Second * time.Duration(*timeout)))
 		if n, _, err := session.serverConn.ReadFromUDP(data); err != nil {
 			log.Printf("Error while read from server, %s", err)
 			break
@@ -59,7 +57,7 @@ func handleSession(f *Forwarder, key string, session *Session) {
 }
 
 func receivingFromClient(f *Forwarder) {
-	data := make([]byte, BUFF_SIZE)
+	data := make([]byte, *bufferSize)
 	for {
 		n, clientAddr, err := f.localConn.ReadFromUDP(data)
 		if err != nil {
@@ -75,7 +73,9 @@ func receivingFromClient(f *Forwarder) {
 			if err != nil {
 				log.Printf("Error while write to server, %s", err)
 			}
-			session.serverConn.SetReadDeadline(time.Now().Add(TIMEOUT))
+			if *sessionTimeoutByRemoteOnly == false {
+				session.serverConn.SetReadDeadline(time.Now().Add(time.Second * time.Duration(*timeout)))
+			}
 		} else if serverConn, err := net.DialUDP("udp", nil, f.toAddr); err == nil {
 			log.Printf("(new) Write to %s\n", f.toAddr.String())
 			_, err := serverConn.Write(data[:n])
