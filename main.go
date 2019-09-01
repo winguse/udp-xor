@@ -16,6 +16,7 @@ var xorFlag = flag.Int("xor", 0, "the xor value for simple encode, only using fi
 var sessionTimeoutByRemoteOnly = flag.Bool("session-timeout-by-remote-only", false, "session timeout by remote reply only")
 var timeout = flag.Int("timeout", 30, "session timeout in seconds")
 var bufferSize = flag.Int("buffer-size", 1600, "buffer size in bytes, the max UDP package size.")
+var verboseLoging = flag.Bool("verbose", false, "verbose logging")
 
 type Session struct {
 	clientAddr *net.UDPAddr
@@ -37,6 +38,12 @@ func xor(data []byte, n int) []byte {
 	return data
 }
 
+func verbosePrintf(format string, v ...interface{}) {
+	if *verboseLoging {
+		log.Printf(format, v...)
+	}
+}
+
 func handleSession(f *Forwarder, key string, session *Session) {
 	log.Printf("%s started", key)
 	data := make([]byte, *bufferSize)
@@ -49,7 +56,7 @@ func handleSession(f *Forwarder, key string, session *Session) {
 			log.Printf("Error while write to client, %s", err)
 			break
 		} else {
-			log.Printf("Sended %d bytes to %s\n", n, session.clientAddr.String())
+			verbosePrintf("Sended %d bytes to %s\n", n, session.clientAddr.String())
 		}
 	}
 	delete(f.sessions, key)
@@ -65,10 +72,10 @@ func receivingFromClient(f *Forwarder) {
 			continue
 		}
 		xor(data, n)
-		log.Printf("<%s> size: %d\n", clientAddr, n)
+		verbosePrintf("<%s> size: %d\n", clientAddr, n)
 		key := clientAddr.String()
 		if session, found := f.sessions[key]; found {
-			log.Printf("(old) Write to %s\n", f.toAddr.String())
+			verbosePrintf("(old) Write to %s\n", f.toAddr.String())
 			_, err := session.serverConn.Write(data[:n])
 			if err != nil {
 				log.Printf("Error while write to server, %s", err)
