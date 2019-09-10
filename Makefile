@@ -93,5 +93,11 @@ $(zip_releases): %.zip : %
 all-arch: $(PLATFORM_LIST) $(WINDOWS_ARCH_LIST)
 
 releases: $(gz_releases) $(zip_releases)
+
 clean:
-	rm $(BINDIR)/*
+	rm -f $(BINDIR)/*
+
+gh-releases:
+	./.github/workflows/github-release winguse/udp-xor $(VERSION) -- $(BINDIR)/udp-xor-*.gz
+
+gh-actions: clean releases gh-releases
