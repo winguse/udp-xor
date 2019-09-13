@@ -6,12 +6,12 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 )
 
-var from = flag.String("from", "127.0.0.1:2000", "from addr")
-var to = flag.String("to", "127.0.0.1:3000", "to addr")
+var fw = flag.String("forward", "127.0.0.1:2000~127.0.0.1:3000", "can be multiple: from~to[,from~to[,from~to]]")
 var xorFlag = flag.Int("xor", 0, "the xor value for simple encode, only using first 8 bit.")
 var sessionTimeoutByRemoteOnly = flag.Bool("session-timeout-by-remote-only", false, "session timeout by remote reply only")
 var timeout = flag.Int("timeout", 30, "session timeout in seconds")
@@ -125,7 +125,7 @@ func forward(from string, to string) (*Forwarder, error) {
 		sessions:  make(map[string]*Session),
 	}
 
-	log.Printf("Local: <%s> \n", localConn.LocalAddr().String())
+	log.Printf("<%s> forward to <%s>\n", fromAddr.String(), toAddr.String())
 
 	go receivingFromClient(&f)
 
@@ -147,9 +147,17 @@ func WaitForCtrlC() {
 
 func main() {
 	flag.Parse()
-	_, err := forward(*from, *to)
-	if err != nil {
-		log.Printf("Error while create fw, %s", err)
+	for _, pair := range strings.Split(*fw, ",") {
+		fromAndTo := strings.Split(pair, "~")
+		if len(fromAndTo) != 2 {
+			log.Printf("Invalid from,to %s", fromAndTo)
+			break
+		}
+		_, err := forward(fromAndTo[0], fromAndTo[1])
+		if err != nil {
+			log.Printf("Error while create fw, %s", err)
+			break
+		}
 	}
 	WaitForCtrlC()
 }
