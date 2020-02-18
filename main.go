@@ -13,16 +13,19 @@ import (
 
 var fw = flag.String("forward", "127.0.0.1:2000~127.0.0.1:3000", "can be multiple: from~to[,from~to[,from~to]]")
 var xorFlag = flag.Int("xor", 0, "the xor value for simple encode, only using first 8 bit.")
+var maxLen = flag.Int("max-len", 0x7fffffff, "the max length of xor from the package beginning")
 var sessionTimeoutByRemoteOnly = flag.Bool("session-timeout-by-remote-only", false, "session timeout by remote reply only")
 var timeout = flag.Int("timeout", 30, "session timeout in seconds")
 var bufferSize = flag.Int("buffer-size", 1600, "buffer size in bytes, the max UDP package size.")
 var verboseLoging = flag.Bool("verbose", false, "verbose logging")
 
+// Session is the UDP session info
 type Session struct {
 	clientAddr *net.UDPAddr
 	serverConn *net.UDPConn
 }
 
+// Forwarder is the info of forword
 type Forwarder struct {
 	fromAddr  *net.UDPAddr
 	toAddr    *net.UDPAddr
@@ -32,7 +35,7 @@ type Forwarder struct {
 
 func xor(data []byte, n int) []byte {
 	xor := byte(*xorFlag)
-	for i := 0; i < n; i++ {
+	for i := 0; i < n && i < *maxLen; i++ {
 		data[i] = data[i] ^ xor
 	}
 	return data
@@ -132,17 +135,18 @@ func forward(from string, to string) (*Forwarder, error) {
 	return &f, nil
 }
 
+// WaitForCtrlC to terminate the program
 func WaitForCtrlC() {
-	var end_waiter sync.WaitGroup
-	end_waiter.Add(1)
-	var signal_channel chan os.Signal
-	signal_channel = make(chan os.Signal, 1)
-	signal.Notify(signal_channel, os.Interrupt)
+	var endWaiter sync.WaitGroup
+	endWaiter.Add(1)
+	var signalChannel chan os.Signal
+	signalChannel = make(chan os.Signal, 1)
+	signal.Notify(signalChannel, os.Interrupt)
 	go func() {
-		<-signal_channel
-		end_waiter.Done()
+		<-signalChannel
+		endWaiter.Done()
 	}()
-	end_waiter.Wait()
+	endWaiter.Wait()
 }
 
 func main() {
